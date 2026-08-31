@@ -8,7 +8,5 @@ $conn = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME);
 
 if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
-} else {
-    echo "Berhasil terhubung ke database.";
 }
 ?>
