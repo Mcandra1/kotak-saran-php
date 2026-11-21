@@ -15,8 +15,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!empty($pesan)) {
         $kode_unik = uniqid('saran-');
 
-        $stmt = $conn->prepare("INSERT INTO saran (pesan, kategori, kode_unik) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $pesan, $kategori, $kode_unik);
+        $status_awal = 'Menunggu Balasan';
+
+        $stmt = $conn->prepare("
+        INSERT INTO saran
+            (pesan, kategori, kode_unik, status)
+        VALUES (?, ?, ?, ?)
+    ");
+
+        $stmt->bind_param(
+            "ssss",
+            $pesan,
+            $kategori,
+            $kode_unik,
+            $status_awal
+        );
 
         if ($stmt->execute()) {
             $message = 'Pesan Anda telah berhasil dikirim. Simpan kode ini untuk melihat balasan:';
@@ -26,6 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $message = 'Gagal menyimpan pesan ke database.';
             $message_type = 'error';
         }
+
         $stmt->close();
     } else {
         $message = 'Pesan tidak boleh kosong.';
@@ -52,7 +66,9 @@ if (isset($_SESSION['form_message'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kotak Saran, Kritik dan Aspirasi</title>
-    <link rel="stylesheet" href="./assets/style.css">
+    <link rel="stylesheet" href="./assets/style.css?v=2">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body>
@@ -60,7 +76,12 @@ if (isset($_SESSION['form_message'])) {
     <nav class="navbar">
         <div class="navbar-inner">
 
-            <a href="index.php" class="nav-brand">Kotak Saran</a>
+            <a href="index.php" class="nav-brand">
+                <span class="nav-icon">
+                    <i class="fa-regular fa-comments"></i>
+                </span>
+                Kotak Saran
+            </a>
 
             <div>
                 <a href="cek_balasan.php" class="nav-link">Cek Balasan</a>
@@ -78,6 +99,8 @@ if (isset($_SESSION['form_message'])) {
                     </a>
 
                 <?php endif; ?>
+
+                <img class="unipi" src="./assets/unipi.png" alt="" srcset="" width="60px" height="60px">
 
             </div>
         </div>
@@ -119,7 +142,15 @@ if (isset($_SESSION['form_message'])) {
             <?php endif; ?>
         </div>
     </main>
-
+    <footer class="site-footer">
+        <p>
+            &copy; <?php echo date('Y'); ?>
+            <span class="footer-name">Muhammad Candra Wijaya</span>
+        </p>
+        <span class="footer-caption">
+            Kotak Saran, Kritik dan Aspirasi
+        </span>
+    </footer>
 </body>
 
 </html>

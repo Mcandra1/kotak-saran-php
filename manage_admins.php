@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once 'config.php';
@@ -108,10 +107,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // ------------------------------------
     // EDIT ADMIN
     // ------------------------------------
-
     elseif ($action == 'edit') {
 
-        $user_id = (int)($_POST['user_id'] ?? 0);
+        $user_id = (int) ($_POST['user_id'] ?? 0);
         $kategori = $_POST['kategori'] ?? '';
         $password = $_POST['password'] ?? '';
 
@@ -196,10 +194,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // ------------------------------------
     // HAPUS ADMIN
     // ------------------------------------
-
     elseif ($action == 'delete') {
 
-        $user_id = (int)($_POST['user_id'] ?? 0);
+        $user_id = (int) ($_POST['user_id'] ?? 0);
 
         if ($user_id <= 0 || $user_id == $_SESSION['user_id']) {
 
@@ -247,13 +244,11 @@ $conn->close();
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kotak Saran, Kritik dan Aspirasi</title>
+    <link rel="stylesheet" href="./assets/style.css?v=2">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Manajemen Admin</title>
-
-    <link rel="stylesheet" href="./assets/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body>
@@ -264,6 +259,9 @@ $conn->close();
         <div class="navbar-inner">
 
             <a href="index.php" class="nav-brand">
+                <span class="nav-icon">
+                    <i class="fa-regular fa-comments"></i>
+                </span>
                 Kotak Saran
             </a>
 
@@ -280,6 +278,10 @@ $conn->close();
                 <a href="logout.php" class="nav-link">
                     Logout
                 </a>
+
+                <img style="margin-right: 10px;" class="unipi" src="./assets/unipi.png" alt="" srcset="" width="60px"
+                    height="60px">
+
 
             </div>
 
@@ -307,8 +309,7 @@ $conn->close();
 
             <?php if ($message): ?>
 
-                <p class="success"
-                   style="text-align:center; margin-bottom: 1.5rem;">
+                <p class="success" style="text-align:center; margin-bottom: 1.5rem;">
 
                     <?php echo htmlspecialchars($message); ?>
 
@@ -319,8 +320,7 @@ $conn->close();
 
             <?php if ($error): ?>
 
-                <p class="error"
-                   style="text-align:center; margin-bottom: 1.5rem;">
+                <p class="error" style="text-align:center; margin-bottom: 1.5rem;">
 
                     <?php echo htmlspecialchars($error); ?>
 
@@ -333,13 +333,9 @@ $conn->close();
 
             <h2>Tambah Admin Baru</h2>
 
-            <form action="manage_admins.php"
-                  method="POST"
-                  class="admin-form">
+            <form action="manage_admins.php" method="POST" class="admin-form">
 
-                <input type="hidden"
-                       name="action"
-                       value="add">
+                <input type="hidden" name="action" value="add">
 
 
                 <div class="form-group">
@@ -348,10 +344,7 @@ $conn->close();
                         Username
                     </label>
 
-                    <input type="text"
-                           id="new_username"
-                           name="username"
-                           required>
+                    <input type="text" id="new_username" name="username" required>
 
                 </div>
 
@@ -362,11 +355,7 @@ $conn->close();
                         Password
                     </label>
 
-                    <input type="password"
-                           id="new_password"
-                           name="password"
-                           minlength="6"
-                           required>
+                    <input type="password" id="new_password" name="password" minlength="6" required>
 
                 </div>
 
@@ -377,9 +366,7 @@ $conn->close();
                         Kategori Admin
                     </label>
 
-                    <select name="kategori"
-                            id="kategori"
-                            required>
+                    <select name="kategori" id="kategori" required>
 
                         <option value="">
                             Pilih Kategori
@@ -494,11 +481,8 @@ $conn->close();
 
                                     <?php if ($user['role'] == 'admin'): ?>
 
-                                        <button
-                                            type="button"
-                                            class="btn-edit"
-                                            onclick='showEditForm(
-                                                <?php echo (int)$user["id"]; ?>,
+                                        <button type="button" class="btn-edit" onclick='showEditForm(
+                                                <?php echo (int) $user["id"]; ?>,
                                                 <?php echo json_encode($user["username"]); ?>,
                                                 <?php echo json_encode($user["kategori"]); ?>
                                             )'>
@@ -508,27 +492,17 @@ $conn->close();
                                         </button>
 
 
-                                        <form
-                                            action="manage_admins.php"
-                                            method="POST"
+                                        <form action="manage_admins.php" method="POST"
                                             style="display:inline-block; margin-left:5px;"
                                             onsubmit="return confirm('Yakin ingin menghapus admin ini?');">
 
-                                            <input
-                                                type="hidden"
-                                                name="action"
-                                                value="delete">
+                                            <input type="hidden" name="action" value="delete">
 
 
-                                            <input
-                                                type="hidden"
-                                                name="user_id"
-                                                value="<?php echo (int)$user['id']; ?>">
+                                            <input type="hidden" name="user_id" value="<?php echo (int) $user['id']; ?>">
 
 
-                                            <button
-                                                type="submit"
-                                                class="btn-delete">
+                                            <button type="submit" class="btn-delete">
 
                                                 Hapus
 
@@ -563,14 +537,11 @@ $conn->close();
 
             <!-- MODAL EDIT ADMIN -->
 
-            <div id="editAdminModal"
-                 class="modal"
-                 style="display:none;">
+            <div id="editAdminModal" class="modal" style="display:none;">
 
                 <div class="modal-content">
 
-                    <span class="close-button"
-                          onclick="hideEditForm()">
+                    <span class="close-button" onclick="hideEditForm()">
 
                         &times;
 
@@ -580,18 +551,12 @@ $conn->close();
                     <h2>Edit Admin</h2>
 
 
-                    <form action="manage_admins.php"
-                          method="POST"
-                          class="admin-form">
+                    <form action="manage_admins.php" method="POST" class="admin-form">
 
-                        <input type="hidden"
-                               name="action"
-                               value="edit">
+                        <input type="hidden" name="action" value="edit">
 
 
-                        <input type="hidden"
-                               id="edit_user_id"
-                               name="user_id">
+                        <input type="hidden" id="edit_user_id" name="user_id">
 
 
                         <div class="form-group">
@@ -600,9 +565,7 @@ $conn->close();
                                 Username
                             </label>
 
-                            <input type="text"
-                                   id="edit_username"
-                                   readonly>
+                            <input type="text" id="edit_username" readonly>
 
                         </div>
 
@@ -613,9 +576,7 @@ $conn->close();
                                 Kategori Admin
                             </label>
 
-                            <select name="kategori"
-                                    id="edit_kategori"
-                                    required>
+                            <select name="kategori" id="edit_kategori" required>
 
                                 <option value="Umum">
                                     Umum
@@ -644,11 +605,8 @@ $conn->close();
                                 Password Baru
                             </label>
 
-                            <input type="password"
-                                   id="edit_password"
-                                   name="password"
-                                   minlength="6"
-                                   placeholder="Kosongkan jika tidak ingin mengubah">
+                            <input type="password" id="edit_password" name="password" minlength="6"
+                                placeholder="Kosongkan jika tidak ingin mengubah">
 
                         </div>
 
@@ -696,7 +654,7 @@ $conn->close();
         }
 
 
-        window.onclick = function(event) {
+        window.onclick = function (event) {
 
             let modal = document.getElementById('editAdminModal');
 
@@ -710,6 +668,15 @@ $conn->close();
 
     </script>
 
+    <footer class="site-footer">
+        <p>
+            &copy; <?php echo date('Y'); ?>
+            <span class="footer-name">Muhammad Candra Wijaya</span>
+        </p>
+        <span class="footer-caption">
+            Kotak Saran, Kritik dan Aspirasi
+        </span>
+    </footer>
 </body>
 
 </html>

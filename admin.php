@@ -252,10 +252,10 @@ $result_notif = $stmt_notif->get_result();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kotak Saran, Kritik dan Aspirasi</title>
+    <link rel="stylesheet" href="./assets/style.css?v=2">
 
-    <title>Admin - Daftar Saran</title>
-
-    <link rel="stylesheet" href="./assets/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body>
@@ -268,6 +268,9 @@ $result_notif = $stmt_notif->get_result();
         <div class="navbar-inner">
 
             <a href="index.php" class="nav-brand">
+                <span class="nav-icon">
+                    <i class="fa-regular fa-comments"></i>
+                </span>
                 Kotak Saran
             </a>
 
@@ -288,6 +291,9 @@ $result_notif = $stmt_notif->get_result();
                     onclick="return confirm('Apakah Anda yakin ingin logout?');">
                     Logout
                 </a>
+
+                <img class="unipi" src="./assets/unipi.png" alt="" srcset="" width="60px" height="60px">
+
             </div>
 
         </div>
@@ -560,52 +566,56 @@ $result_notif = $stmt_notif->get_result();
                         <!-- TOMBOL HAPUS PESAN -->
                         <!-- ====================================== -->
 
-                        <form
-                            action="hapus_saran.php"
-                            method="POST"
-                            onsubmit="return confirm('Yakin ingin menghapus pesan ini? Notifikasi akan dikirim kepada admin terkait.');"
-                            style="margin-top:15px;"
-                        >
+                        <?php if ($role === 'superadmin'): ?>
 
-                            <input
-                                type="hidden"
-                                name="saran_id"
-                                value="<?php echo (int) $row['id']; ?>"
+                            <form
+                                action="hapus_saran.php"
+                                method="POST"
+                                onsubmit="return confirm('Yakin ingin menghapus pesan ini? Notifikasi akan dikirim kepada admin terkait.');"
+                                style="margin-top:15px;"
                             >
 
-                            <input
-                                type="hidden"
-                                name="current_page"
-                                value="<?php echo $current_page; ?>"
-                            >
+                                <input
+                                    type="hidden"
+                                    name="saran_id"
+                                    value="<?php echo (int) $row['id']; ?>"
+                                >
 
-                            <input
-                                type="hidden"
-                                name="search"
-                                value="<?php echo htmlspecialchars($search_query); ?>"
-                            >
+                                <input
+                                    type="hidden"
+                                    name="current_page"
+                                    value="<?php echo $current_page; ?>"
+                                >
 
-                            <input
-                                type="hidden"
-                                name="kategori"
-                                value="<?php echo htmlspecialchars($category_filter); ?>"
-                            >
+                                <input
+                                    type="hidden"
+                                    name="search"
+                                    value="<?php echo htmlspecialchars($search_query); ?>"
+                                >
 
-                            <button
-                                type="submit"
-                                style="
-                                    background:#dc3545;
-                                    color:white;
-                                    border:none;
-                                    padding:8px 15px;
-                                    border-radius:5px;
-                                    cursor:pointer;
-                                "
-                            >
-                                Hapus Pesan
-                            </button>
+                                <input
+                                    type="hidden"
+                                    name="kategori"
+                                    value="<?php echo htmlspecialchars($category_filter); ?>"
+                                >
 
-                        </form>
+                                <button
+                                    type="submit"
+                                    style="
+                                        background:#dc3545;
+                                        color:white;
+                                        border:none;
+                                        padding:8px 15px;
+                                        border-radius:5px;
+                                        cursor:pointer;
+                                    "
+                                >
+                                    Hapus Pesan
+                                </button>
+
+                            </form>
+
+                        <?php endif; ?>
 
                         <!-- ====================================== -->
                         <!-- RIWAYAT PERCAKAPAN -->
@@ -730,7 +740,7 @@ $result_notif = $stmt_notif->get_result();
                             
                                 <!-- FORM BALASAN ADMIN -->
 
-                                <?php if ($row['status'] === 'Menunggu Balasan'): ?>
+                                <?php if (in_array($row['status'], ['Menunggu Balasan', 'Belum Dibalas'], true)): ?>
 
                                     <form action="proses_balasan.php" method="POST">
 
@@ -826,7 +836,15 @@ $result_notif = $stmt_notif->get_result();
         </div>
 
     </main>
-
+             <footer class="site-footer">
+                <p>
+                    &copy; <?php echo date('Y'); ?>
+                    <span class="footer-name">Muhammad Candra Wijaya</span>
+                </p>
+                <span class="footer-caption">
+                    Kotak Saran, Kritik dan Aspirasi
+                </span>
+            </footer>
 </body>
 </html>
 

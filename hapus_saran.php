@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once 'config.php';
@@ -16,15 +15,15 @@ if (
 }
 
 $role = $_SESSION['role'] ?? '';
-$kategori_admin = $_SESSION['kategori'] ?? '';
 $username = $_SESSION['username'] ?? '';
 
-if (!in_array($role, ['superadmin', 'admin'], true)) {
-    die("Akses tidak diizinkan.");
-}
+// ======================================
+// HANYA SUPER ADMIN YANG BOLEH MENGHAPUS
+// ======================================
 
-if ($role === 'admin' && empty($kategori_admin)) {
-    die("Akun admin belum memiliki kategori.");
+if ($role !== 'superadmin') {
+    http_response_code(403);
+    die("Akses ditolak! Hanya Super Admin yang dapat menghapus pesan.");
 }
 
 // ======================================
@@ -75,22 +74,14 @@ try {
 
     $kategori_pesan = $saran['kategori'];
 
-    // Admin kategori hanya boleh menghapus kategori miliknya
-    if (
-        $role === 'admin' &&
-        $kategori_pesan !== $kategori_admin
-    ) {
-        throw new Exception("Anda tidak memiliki izin menghapus pesan ini.");
-    }
+    // Identitas Super Admin yang menghapus
+    $deleted_role = 'superadmin';
+    $deleted_kategori = 'Admin Utama';
 
-    // Identitas admin yang menghapus
-    $deleted_role = $role;
+    // ======================================
+    // SOFT DELETE PESAN
+    // ======================================
 
-    $deleted_kategori = ($role === 'superadmin')
-        ? 'Admin Utama'
-        : $kategori_admin;
-
-    // Soft delete pesan
     $stmt = $conn->prepare("
         UPDATE saran
         SET
@@ -132,11 +123,7 @@ try {
 
     $result_admin = $stmt_admin->get_result();
 
-    if ($role === 'superadmin') {
-        $nama_penghapus = "Super Admin ($username)";
-    } else {
-        $nama_penghapus = "Admin $kategori_admin ($username)";
-    }
+    $nama_penghapus = "Super Admin ($username)";
 
     $isi_notifikasi =
         "Pesan kategori $kategori_pesan dihapus oleh $nama_penghapus.";
@@ -164,7 +151,10 @@ try {
     $stmt_notif->close();
     $stmt_admin->close();
 
-    // Simpan seluruh perubahan
+    // ======================================
+    // SIMPAN PERUBAHAN
+    // ======================================
+
     $conn->commit();
 
     // ======================================
