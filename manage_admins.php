@@ -1,201 +1,715 @@
+
 <?php
 session_start();
 require_once 'config.php';
 
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    header("Location: login.php");
+// ========================================
+// CEK HAK AKSES SUPER ADMIN
+// ========================================
+
+if (
+    !isset($_SESSION['loggedin']) ||
+    $_SESSION['loggedin'] !== true ||
+    !isset($_SESSION['role']) ||
+    $_SESSION['role'] !== 'superadmin'
+) {
+    header("Location: admin.php");
     exit;
 }
 
 $message = '';
 $error = '';
 
+$kategori_valid = [
+    'Umum',
+    'Kepengurusan',
+    'Akademik',
+    'Pelatihan'
+];
+
+// ========================================
+// PROSES TAMBAH, EDIT, DAN HAPUS ADMIN
+// ========================================
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST['action'])) {
-        $action = $_POST['action'];
 
-        if ($action == 'add' || $action == 'edit') {
-            $username = trim($_POST['username']);
-            $password = trim($_POST['password']);
-            $user_id = $_POST['user_id'] ?? null;
+    $action = $_POST['action'] ?? '';
 
-            if (empty($username) || empty($password)) {
-                $error = "Username dan password tidak boleh kosong.";
+    // ------------------------------------
+    // TAMBAH ADMIN
+    // ------------------------------------
+
+    if ($action == 'add') {
+
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $kategori = $_POST['kategori'] ?? '';
+
+        if (
+            empty($username) ||
+            empty($password) ||
+            !in_array($kategori, $kategori_valid, true)
+        ) {
+
+            $error = "Semua data wajib diisi dengan benar.";
+
+        } elseif (strlen($password) < 6) {
+
+            $error = "Password minimal 6 karakter.";
+
+        } else {
+
+            // Cek username
+            $stmt_check = $conn->prepare(
+                "SELECT id FROM users WHERE username = ?"
+            );
+
+            $stmt_check->bind_param("s", $username);
+            $stmt_check->execute();
+
+            $result_check = $stmt_check->get_result();
+
+            if ($result_check->num_rows > 0) {
+
+                $error = "Username sudah digunakan.";
+
             } else {
-                $password = password_hash($password, PASSWORD_DEFAULT);
 
-                if ($action == 'add') {
-                    $stmt = $conn->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
-                    $stmt->bind_param("ss", $username, $password);
-                    if ($stmt->execute()) {
-                        $message = "Admin baru berhasil ditambahkan.";
-                    } else {
-                        $error = "Gagal menambahkan admin: " . $conn->error;
-                    }
-                } elseif ($action == 'edit') {
-                    if ($user_id) {
-                        $stmt = $conn->prepare("UPDATE users SET username = ?, password = ? WHERE id = ?");
-                        $stmt->bind_param("ssi", $username, $password, $user_id);
-                        if ($stmt->execute()) {
-                            $message = "Admin berhasil diperbarui.";
-                        } else {
-                            $error = "Gagal memperbarui admin: " . $conn->error;
-                        }
-                    } else {
-                        $error = "ID Admin tidak ditemukan untuk pembaruan.";
-                    }
-                }
-                $stmt->close();
-            }
-        } elseif ($action == 'delete') {
-            $user_id = $_POST['user_id'] ?? null;
-            if ($user_id && $user_id != $_SESSION['user_id']) {
-                $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-                $stmt->bind_param("i", $user_id);
+                $password_hash = password_hash(
+                    $password,
+                    PASSWORD_DEFAULT
+                );
+
+                $stmt = $conn->prepare(
+                    "INSERT INTO users (username, password, role, kategori)
+                     VALUES (?, ?, 'admin', ?)"
+                );
+
+                $stmt->bind_param(
+                    "sss",
+                    $username,
+                    $password_hash,
+                    $kategori
+                );
+
                 if ($stmt->execute()) {
-                    $message = "Admin berhasil dihapus.";
+                    $message = "Admin berhasil ditambahkan.";
                 } else {
-                    $error = "Gagal menghapus admin: " . $conn->error;
+                    $error = "Gagal menambahkan admin.";
                 }
+
                 $stmt->close();
-            } else {
-                $error = "Tidak dapat menghapus admin ini atau admin tidak ditemukan.";
             }
+
+            $stmt_check->close();
+        }
+    }
+
+    // ------------------------------------
+    // EDIT ADMIN
+    // ------------------------------------
+
+    elseif ($action == 'edit') {
+
+        $user_id = (int)($_POST['user_id'] ?? 0);
+        $kategori = $_POST['kategori'] ?? '';
+        $password = $_POST['password'] ?? '';
+
+        if (
+            $user_id <= 0 ||
+            !in_array($kategori, $kategori_valid, true)
+        ) {
+
+            $error = "Data admin tidak valid.";
+
+        } else {
+
+            // Pastikan akun yang diedit adalah admin biasa
+            $stmt_check = $conn->prepare(
+                "SELECT id FROM users
+                 WHERE id = ? AND role = 'admin'"
+            );
+
+            $stmt_check->bind_param("i", $user_id);
+            $stmt_check->execute();
+
+            $result_check = $stmt_check->get_result();
+
+            if ($result_check->num_rows !== 1) {
+
+                $error = "Admin tidak ditemukan.";
+
+            } elseif (!empty($password) && strlen($password) < 6) {
+
+                $error = "Password minimal 6 karakter.";
+
+            } else {
+
+                if (!empty($password)) {
+
+                    $password_hash = password_hash(
+                        $password,
+                        PASSWORD_DEFAULT
+                    );
+
+                    $stmt = $conn->prepare(
+                        "UPDATE users
+                         SET kategori = ?, password = ?
+                         WHERE id = ? AND role = 'admin'"
+                    );
+
+                    $stmt->bind_param(
+                        "ssi",
+                        $kategori,
+                        $password_hash,
+                        $user_id
+                    );
+
+                } else {
+
+                    $stmt = $conn->prepare(
+                        "UPDATE users
+                         SET kategori = ?
+                         WHERE id = ? AND role = 'admin'"
+                    );
+
+                    $stmt->bind_param(
+                        "si",
+                        $kategori,
+                        $user_id
+                    );
+                }
+
+                if ($stmt->execute()) {
+                    $message = "Data admin berhasil diperbarui.";
+                } else {
+                    $error = "Gagal memperbarui admin.";
+                }
+
+                $stmt->close();
+            }
+
+            $stmt_check->close();
+        }
+    }
+
+    // ------------------------------------
+    // HAPUS ADMIN
+    // ------------------------------------
+
+    elseif ($action == 'delete') {
+
+        $user_id = (int)($_POST['user_id'] ?? 0);
+
+        if ($user_id <= 0 || $user_id == $_SESSION['user_id']) {
+
+            $error = "Tidak dapat menghapus akun ini.";
+
+        } else {
+
+            $stmt = $conn->prepare(
+                "DELETE FROM users
+                 WHERE id = ? AND role = 'admin'"
+            );
+
+            $stmt->bind_param("i", $user_id);
+
+            if ($stmt->execute() && $stmt->affected_rows > 0) {
+                $message = "Admin berhasil dihapus.";
+            } else {
+                $error = "Admin tidak ditemukan atau gagal dihapus.";
+            }
+
+            $stmt->close();
         }
     }
 }
 
-$users_result = $conn->query("SELECT id, username, created_at FROM users ORDER BY created_at DESC");
+// ========================================
+// AMBIL DATA ADMIN
+// ========================================
+
+$users_result = $conn->query(
+    "SELECT id, username, role, kategori, created_at
+     FROM users
+     ORDER BY created_at DESC"
+);
+
+if (!$users_result) {
+    die("Gagal mengambil data admin.");
+}
 
 $conn->close();
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>Manajemen Admin</title>
+
     <link rel="stylesheet" href="./assets/style.css">
 </head>
+
 <body>
 
+    <!-- NAVBAR -->
     <nav class="navbar">
+
         <div class="navbar-inner">
-            <a href="/" class="nav-brand">Kotak Saran</a>
+
+            <a href="index.php" class="nav-brand">
+                Kotak Saran
+            </a>
+
             <div>
-                <a href="admin.php" class="nav-link">Daftar Saran</a>
-                <a href="manage_admins.php" class="nav-link active">Manajemen Admin</a>
-                <a href="logout.php" class="nav-link">Logout</a>
+
+                <a href="admin.php" class="nav-link">
+                    Daftar Saran
+                </a>
+
+                <a href="manage_admins.php" class="nav-link active">
+                    Manajemen Admin
+                </a>
+
+                <a href="logout.php" class="nav-link">
+                    Logout
+                </a>
+
             </div>
+
         </div>
+
     </nav>
 
+
     <main class="main-container">
-        <div class="content-wrapper" style="max-width: 900px;">
+
+        <div class="content-wrapper" style="max-width: 1000px;">
+
             <div class="content-header">
+
                 <h1>Manajemen Admin</h1>
+
+                <p>
+                    Kelola akun admin berdasarkan kategori masing-masing.
+                </p>
+
             </div>
 
+
+            <!-- PESAN NOTIFIKASI -->
+
             <?php if ($message): ?>
-                <p class="success" style="text-align:center; margin-bottom: 1.5rem;"><?php echo $message; ?></p>
+
+                <p class="success"
+                   style="text-align:center; margin-bottom: 1.5rem;">
+
+                    <?php echo htmlspecialchars($message); ?>
+
+                </p>
+
             <?php endif; ?>
+
+
             <?php if ($error): ?>
-                <p class="error" style="text-align:center; margin-bottom: 1.5rem;"><?php echo $error; ?></p>
+
+                <p class="error"
+                   style="text-align:center; margin-bottom: 1.5rem;">
+
+                    <?php echo htmlspecialchars($error); ?>
+
+                </p>
+
             <?php endif; ?>
+
+
+            <!-- FORM TAMBAH ADMIN -->
 
             <h2>Tambah Admin Baru</h2>
-            <form action="manage_admins.php" method="POST" class="admin-form">
-                <input type="hidden" name="action" value="add">
+
+            <form action="manage_admins.php"
+                  method="POST"
+                  class="admin-form">
+
+                <input type="hidden"
+                       name="action"
+                       value="add">
+
+
                 <div class="form-group">
-                    <label for="new_username">Username</label>
-                    <input type="text" id="new_username" name="username" required>
+
+                    <label for="new_username">
+                        Username
+                    </label>
+
+                    <input type="text"
+                           id="new_username"
+                           name="username"
+                           required>
+
                 </div>
+
+
                 <div class="form-group">
-                    <label for="new_password">Password</label>
-                    <input type="password" id="new_password" name="password" required>
+
+                    <label for="new_password">
+                        Password
+                    </label>
+
+                    <input type="password"
+                           id="new_password"
+                           name="password"
+                           minlength="6"
+                           required>
+
                 </div>
-                <button type="submit">Tambah Admin</button>
+
+
+                <div class="form-group">
+
+                    <label for="kategori">
+                        Kategori Admin
+                    </label>
+
+                    <select name="kategori"
+                            id="kategori"
+                            required>
+
+                        <option value="">
+                            Pilih Kategori
+                        </option>
+
+                        <option value="Umum">
+                            Umum
+                        </option>
+
+                        <option value="Kepengurusan">
+                            Kepengurusan
+                        </option>
+
+                        <option value="Akademik">
+                            Akademik
+                        </option>
+
+                        <option value="Pelatihan">
+                            Pelatihan
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button type="submit">
+                    Tambah Admin
+                </button>
+
             </form>
 
-            <h2 style="margin-top: 3rem;">Daftar Admin</h2>
-            <?php if ($users_result && $users_result->num_rows > 0): ?>
+
+            <!-- TABEL DAFTAR ADMIN -->
+
+            <h2 style="margin-top: 3rem;">
+                Daftar Admin
+            </h2>
+
+
+            <?php if ($users_result->num_rows > 0): ?>
+
                 <table class="admin-table">
+
                     <thead>
+
                         <tr>
-                            <th>ID</th>
+
+                            <th>No</th>
+
                             <th>Username</th>
+
+                            <th>Role</th>
+
+                            <th>Kategori</th>
+
                             <th>Dibuat Pada</th>
+
                             <th>Aksi</th>
+
                         </tr>
+
                     </thead>
+
+
                     <tbody>
-                        <?php while($user = $users_result->fetch_assoc()): ?>
+                        <?= $no = 1; ?>
+
+                        <?php while ($user = $users_result->fetch_assoc()): ?>
+
                             <tr>
-                                <td><?php echo htmlspecialchars($user['id']); ?></td>
-                                <td><?php echo htmlspecialchars($user['username']); ?></td>
-                                <td><?php echo date('d M Y H:i', strtotime($user['created_at'])); ?></td>
+
                                 <td>
-                                    <button class="btn-edit" onclick="showEditForm(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['username']); ?>')">Edit</button>
-                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                        <form action="manage_admins.php" method="POST" style="display:inline-block; margin-left: 5px;" onsubmit="return confirm('Yakin ingin menghapus admin ini?');">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                                            <button type="submit" class="btn-delete">Hapus</button>
-                                        </form>
-                                    <?php endif; ?>
+                                    <?php echo $no++; ?>
                                 </td>
+
+
+                                <td>
+                                    <?php echo htmlspecialchars($user['username']); ?>
+                                </td>
+
+
+                                <td>
+
+                                    <?php if ($user['role'] == 'superadmin'): ?>
+
+                                        <strong>Super Admin</strong>
+
+                                    <?php else: ?>
+
+                                        Admin
+
+                                    <?php endif; ?>
+
+                                </td>
+
+
+                                <td>
+                                    <?php echo htmlspecialchars($user['kategori'] ?? '-'); ?>
+                                </td>
+
+
+                                <td>
+                                    <?php echo date(
+                                        'd M Y H:i',
+                                        strtotime($user['created_at'])
+                                    ); ?>
+                                </td>
+
+
+                                <td>
+
+                                    <?php if ($user['role'] == 'admin'): ?>
+
+                                        <button
+                                            type="button"
+                                            class="btn-edit"
+                                            onclick='showEditForm(
+                                                <?php echo (int)$user["id"]; ?>,
+                                                <?php echo json_encode($user["username"]); ?>,
+                                                <?php echo json_encode($user["kategori"]); ?>
+                                            )'>
+
+                                            Edit
+
+                                        </button>
+
+
+                                        <form
+                                            action="manage_admins.php"
+                                            method="POST"
+                                            style="display:inline-block; margin-left:5px;"
+                                            onsubmit="return confirm('Yakin ingin menghapus admin ini?');">
+
+                                            <input
+                                                type="hidden"
+                                                name="action"
+                                                value="delete">
+
+
+                                            <input
+                                                type="hidden"
+                                                name="user_id"
+                                                value="<?php echo (int)$user['id']; ?>">
+
+
+                                            <button
+                                                type="submit"
+                                                class="btn-delete">
+
+                                                Hapus
+
+                                            </button>
+
+                                        </form>
+
+                                    <?php else: ?>
+
+                                        <span>Admin Utama</span>
+
+                                    <?php endif; ?>
+
+                                </td>
+
                             </tr>
+
                         <?php endwhile; ?>
+
                     </tbody>
+
                 </table>
 
             <?php else: ?>
-                <p style="text-align: center;">Belum ada admin yang terdaftar.</p>
+
+                <p style="text-align:center;">
+                    Belum ada admin yang terdaftar.
+                </p>
+
             <?php endif; ?>
 
-            <div id="editAdminModal" class="modal" style="display:none;">
+
+            <!-- MODAL EDIT ADMIN -->
+
+            <div id="editAdminModal"
+                 class="modal"
+                 style="display:none;">
+
                 <div class="modal-content">
-                    <span class="close-button" onclick="hideEditForm()">&times;</span>
+
+                    <span class="close-button"
+                          onclick="hideEditForm()">
+
+                        &times;
+
+                    </span>
+
+
                     <h2>Edit Admin</h2>
-                    <form action="manage_admins.php" method="POST" class="admin-form">
-                        <input type="hidden" name="action" value="edit">
-                        <input type="hidden" id="edit_user_id" name="user_id">
+
+
+                    <form action="manage_admins.php"
+                          method="POST"
+                          class="admin-form">
+
+                        <input type="hidden"
+                               name="action"
+                               value="edit">
+
+
+                        <input type="hidden"
+                               id="edit_user_id"
+                               name="user_id">
+
+
                         <div class="form-group">
-                            <label for="edit_username">Username</label>
-                            <input type="text" id="edit_username" name="username" required readonly>
+
+                            <label for="edit_username">
+                                Username
+                            </label>
+
+                            <input type="text"
+                                   id="edit_username"
+                                   readonly>
+
                         </div>
+
+
                         <div class="form-group">
-                            <label for="edit_password">Password Baru</label>
-                            <input type="password" id="edit_password" name="password" placeholder="Biarkan kosong jika tidak ingin mengubah" minlength="6">
+
+                            <label for="edit_kategori">
+                                Kategori Admin
+                            </label>
+
+                            <select name="kategori"
+                                    id="edit_kategori"
+                                    required>
+
+                                <option value="Umum">
+                                    Umum
+                                </option>
+
+                                <option value="Kepengurusan">
+                                    Kepengurusan
+                                </option>
+
+                                <option value="Akademik">
+                                    Akademik
+                                </option>
+
+                                <option value="Pelatihan">
+                                    Pelatihan
+                                </option>
+
+                            </select>
+
                         </div>
-                        <button type="submit">Simpan Perubahan</button>
+
+
+                        <div class="form-group">
+
+                            <label for="edit_password">
+                                Password Baru
+                            </label>
+
+                            <input type="password"
+                                   id="edit_password"
+                                   name="password"
+                                   minlength="6"
+                                   placeholder="Kosongkan jika tidak ingin mengubah">
+
+                        </div>
+
+
+                        <button type="submit">
+                            Simpan Perubahan
+                        </button>
+
                     </form>
+
                 </div>
+
             </div>
 
         </div>
+
     </main>
 
+
+    <!-- JAVASCRIPT -->
+
     <script>
-        function showEditForm(id, username) {
+
+        function showEditForm(id, username, kategori) {
+
             document.getElementById('edit_user_id').value = id;
+
             document.getElementById('edit_username').value = username;
+
+            document.getElementById('edit_kategori').value = kategori;
+
+            document.getElementById('edit_password').value = '';
+
             document.getElementById('editAdminModal').style.display = 'block';
+
         }
+
 
         function hideEditForm() {
+
             document.getElementById('editAdminModal').style.display = 'none';
+
             document.getElementById('edit_password').value = '';
+
         }
 
+
         window.onclick = function(event) {
+
             let modal = document.getElementById('editAdminModal');
+
             if (event.target == modal) {
-                modal.style.display = 'none';
-                document.getElementById('edit_password').value = '';
+
+                hideEditForm();
+
             }
+
         }
+
     </script>
+
 </body>
+
 </html>

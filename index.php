@@ -6,6 +6,8 @@ $message = '';
 $message_type = '';
 $kode_unik_display = '';
 
+$is_admin = isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true;
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $pesan = trim($_POST['pesan'] ?? '');
     $kategori = trim($_POST['kategori'] ?? 'Umum');
@@ -45,20 +47,38 @@ if (isset($_SESSION['form_message'])) {
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kotak Saran, Kritik dan Aspirasi</title>
     <link rel="stylesheet" href="./assets/style.css">
 </head>
+
 <body>
 
     <nav class="navbar">
         <div class="navbar-inner">
-            <a href="/kotak-saran-php/index.php" class="nav-brand">Kotak Saran</a>
+
+            <a href="index.php" class="nav-brand">Kotak Saran</a>
+
             <div>
                 <a href="cek_balasan.php" class="nav-link">Cek Balasan</a>
-                <a href="login.php" class="nav-link">Admin Login</a>
+
+                <?php if ($is_admin): ?>
+
+                    <a href="admin.php" class="nav-link">
+                        <?php echo htmlspecialchars($_SESSION['username']); ?>
+                    </a>
+
+                <?php else: ?>
+
+                    <a href="login.php" class="nav-link">
+                        Admin Login
+                    </a>
+
+                <?php endif; ?>
+
             </div>
         </div>
     </nav>
@@ -82,7 +102,8 @@ if (isset($_SESSION['form_message'])) {
                 </div>
                 <div class="form-group">
                     <label for="pesan">Pesan Anda</label>
-                    <textarea id="pesan" name="pesan" rows="8" required placeholder="Tuliskan saran, kritik, atau aspirasi Anda di sini..."></textarea>
+                    <textarea id="pesan" name="pesan" rows="8" required
+                        placeholder="Tuliskan saran, kritik, atau aspirasi Anda di sini..."></textarea>
                 </div>
                 <button type="submit">Kirim Pesan</button>
             </form>
@@ -100,4 +121,5 @@ if (isset($_SESSION['form_message'])) {
     </main>
 
 </body>
+
 </html>
